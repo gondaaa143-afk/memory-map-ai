@@ -1,40 +1,214 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Memory Map AI</title>
+
 <style>
-body{margin:0;background:#0b1020;color:white;font-family:Arial}
-.top{padding:20px;background:#121a33}
-.btn{background:#2563eb;padding:14px;border-radius:12px;text-align:center;margin:20px;font-weight:bold}
-.map{position:relative;height:420px}
-.node{position:absolute;width:70px;height:70px;border-radius:50%;
-background:#2563eb;display:flex;align-items:center;justify-content:center;
-font-size:11px;box-shadow:0 0 20px #2563eb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+font-family:Arial,sans-serif;
+background:linear-gradient(180deg,#050816,#111827);
+color:white;
+overflow:hidden;
+}
+.header{
+margin:16px;
+padding:18px;
+border-radius:24px;
+background:rgba(255,255,255,.06);
+backdrop-filter:blur(14px);
+border:1px solid rgba(255,255,255,.08);
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+.logo{font-size:24px;font-weight:bold}
+.sub{font-size:12px;color:#94a3b8}
+.ring{
+width:72px;height:72px;border-radius:50%;
+background:conic-gradient(#3b82f6 0 230deg,#1f2937 230deg);
+display:flex;align-items:center;justify-content:center;
+}
+.ring div{
+width:56px;height:56px;border-radius:50%;
+background:#0b1020;
+display:flex;align-items:center;justify-content:center;
+font-weight:bold;
+}
+.btn{
+margin:0 16px;
+padding:15px;
+text-align:center;
+border-radius:18px;
+background:#2563eb;
+font-weight:bold;
+box-shadow:0 0 25px rgba(37,99,235,.6);
+cursor:pointer;
+}
+#loading{
+display:none;
+margin-top:8px;
+font-size:13px;
+color:#bfdbfe;
+animation:pulse 1s infinite;
+}
+@keyframes pulse{
+50%{opacity:.3}
+}
+.map{
+position:relative;
+height:440px;
+margin-top:12px;
+}
+svg{
+position:absolute;
+inset:0;
+width:100%;
+height:100%;
+}
+.node{
+position:absolute;
+width:74px;
+height:74px;
+border-radius:50%;
+background:#2563eb;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:11px;
+box-shadow:0 0 22px rgba(37,99,235,.8);
+animation:float 3s ease-in-out infinite;
+transition:.25s;
+cursor:pointer;
+}
+.node:active{transform:scale(1.12)}
+@keyframes float{
+0%,100%{transform:translateY(0)}
+50%{transform:translateY(-10px)}
+}
+.panel{
+margin:16px;
+padding:18px;
+border-radius:22px;
+background:rgba(255,255,255,.05);
+backdrop-filter:blur(10px);
+border:1px solid rgba(255,255,255,.08);
+}
+.small{font-size:13px;color:#cbd5e1}
+.progress{
+height:10px;
+background:#1f2937;
+border-radius:20px;
+margin-top:12px;
+overflow:hidden;
+}
+.bar{
+height:100%;
+width:62%;
+background:#3b82f6;
+transition:.4s;
+}
 </style>
 </head>
+
 <body>
 
-<div class="top">
-<h2>Memory Map AI</h2>
-<p>Your Second Brain</p>
+<div class="header">
+<div>
+<div class="logo">Memory Map AI</div>
+<div class="sub">Your Second Brain</div>
 </div>
 
-<div class="btn">📄 Upload PDF</div>
+<div class="ring">
+<div id="score">62%</div>
+</div>
+</div>
+
+<div class="btn" onclick="upload()">
+📄 Upload PDF
+<div id="loading">AI Building Memory Map...</div>
+</div>
 
 <div class="map">
-<div class="node" style="left:40%;top:40%">Polity</div>
-<div class="node" style="left:15%;top:20%">Federalism</div>
-<div class="node" style="left:68%;top:18%">Judiciary</div>
-<div class="node" style="left:18%;top:68%">Governor</div>
-<div class="node" style="left:68%;top:68%">Parliament</div>
+
+<svg id="lines"></svg>
+
+<div class="node" style="left:40%;top:42%" data-score="92" onclick="tap(this)">Polity</div>
+
+<div class="node" style="left:14%;top:22%" data-score="54" onclick="tap(this)">Federalism</div>
+
+<div class="node" style="left:69%;top:20%" data-score="80" onclick="tap(this)">Judiciary</div>
+
+<div class="node" style="left:18%;top:69%" data-score="39" onclick="tap(this)">Governor</div>
+
+<div class="node" style="left:69%;top:69%" data-score="73" onclick="tap(this)">Parliament</div>
+
+<div class="node" style="left:42%;top:8%" data-score="47" onclick="tap(this)">DPSP</div>
+
 </div>
 
-<div style="padding:20px">
-<h3>Memory Score: 62%</h3>
-<p>Next revision in 3 days.</p>
+<div class="panel">
+<h3 id="title">Tap any node</h3>
+
+<div class="small" id="text">
+AI tumhare weak topics identify karega aur perfect revision time batayega.
 </div>
+
+<div class="progress">
+<div class="bar" id="bar"></div>
+</div>
+</div>
+
+<script>
+const nodes=[...document.querySelectorAll('.node')];
+const svg=document.getElementById('lines');
+
+function draw(){
+svg.innerHTML='';
+let p=nodes[0].getBoundingClientRect();
+let r=svg.getBoundingClientRect();
+
+let cx=p.left-r.left+37;
+let cy=p.top-r.top+37;
+
+nodes.slice(1).forEach(n=>{
+let b=n.getBoundingClientRect();
+let x=b.left-r.left+37;
+let y=b.top-r.top+37;
+
+let line=document.createElementNS('http://www.w3.org/2000/svg','line');
+line.setAttribute('x1',cx);
+line.setAttribute('y1',cy);
+line.setAttribute('x2',x);
+line.setAttribute('y2',y);
+line.setAttribute('stroke','#4f46e5');
+line.setAttribute('stroke-width','3');
+line.setAttribute('opacity','.7');
+svg.appendChild(line);
+});
+}
+setTimeout(draw,200);
+window.onresize=draw;
+
+function tap(el){
+let s=el.dataset.score;
+document.getElementById('score').innerText=s+'%';
+document.getElementById('bar').style.width=s+'%';
+document.getElementById('title').innerText=el.innerText;
+document.getElementById('text').innerText=
+s<50?'⚠ Revise within 24 hours':'Strong memory. Next revision in 3 days.';
+}
+
+function upload(){
+let l=document.getElementById('loading');
+l.style.display='block';
+setTimeout(()=>{
+l.innerText='✅ Constitution.pdf mapped successfully';
+},1800);
+}
+</script>
 
 </body>
-</html>
+  </html>
